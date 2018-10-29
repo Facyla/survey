@@ -9,6 +9,7 @@
 
 elgg_register_event_handler('init','system','survey_init');
 
+
 function survey_init() {
 
 	elgg_register_library('elgg:survey', elgg_get_plugins_path() . 'survey/lib/survey/functions.php');
@@ -26,16 +27,13 @@ function survey_init() {
 	elgg_register_page_handler('survey','survey_page_handler');
 
 	// Register a URL handler for survey posts
-	elgg_register_entity_url_handler('object','survey','survey_url');
-	//elgg_register_plugin_hook_handler('entity:url', 'object', 'survey_url'); // Elgg 1.10
+	elgg_register_plugin_hook_handler('entity:url', 'object', 'survey_url');
 
 	// notifications
 	$send_notification = elgg_get_plugin_setting('send_notification', 'survey');
 	if (!$send_notification || $send_notification != 'no') {
-		register_notification_object('object', 'survey', elgg_echo('survey:new'));
-		elgg_register_plugin_hook_handler('notify:entity:message', 'object', 'survey_prepare_notification');
-		//elgg_register_notification_event('object', 'survey'); // Elgg 1.10
-		//elgg_register_plugin_hook_handler('prepare', 'notification:create:object:survey', 'survey_prepare_notification'); // Elgg 1.10
+		elgg_register_notification_event('object', 'survey', array('create'));
+		elgg_register_plugin_hook_handler('prepare', 'notification:publish:object:survey', 'survey_prepare_notification');
 	}
 
 	// add link to owner block
@@ -70,7 +68,7 @@ function survey_init() {
 	elgg_register_widget_type('survey', elgg_echo('survey:my_widget_title'), elgg_echo('survey:my_widget_description'));
 	elgg_register_widget_type('latestsurvey', elgg_echo('survey:latest_widget_title'), elgg_echo('survey:latest_widget_description'), array("dashboard"));
 	$survey_front_page = elgg_get_plugin_setting('front_page','survey');
-	if($survey_front_page == 'yes') {
+	if ($survey_front_page == 'yes') {
 		elgg_register_widget_type('survey_individual', elgg_echo('survey:individual'), elgg_echo('survey_individual:widget:description'), array("dashboard"));
 	}
 	if (elgg_is_active_plugin('widget_manager')) {
@@ -78,7 +76,7 @@ function survey_init() {
 		if (!$group_survey || $group_survey != 'no') {
 			elgg_register_widget_type('latestgroupsurvey', elgg_echo('survey:latestgroup_widget_title'), elgg_echo('survey:latestgroup_widget_description'), array("groups"));
 		}
-		if($survey_front_page == 'yes') {
+		if ($survey_front_page == 'yes') {
 			elgg_register_widget_type('survey_individual_index', elgg_echo('survey:individual'), elgg_echo('survey_individual:widget:description'), array("index"));
 		}
 
@@ -90,9 +88,9 @@ function survey_init() {
 
 	// Register actions
 	$action_path = elgg_get_plugins_path() . 'survey/actions/survey';
-	elgg_register_action("survey/edit","$action_path/edit.php");
-	elgg_register_action("survey/delete","$action_path/delete.php");
-	elgg_register_action("survey/response","$action_path/response.php");
+	elgg_register_action("survey/edit", "$action_path/edit.php");
+	elgg_register_action("survey/delete", "$action_path/delete.php");
+	elgg_register_action("survey/response", "$action_path/response.php");
 }
 
 
@@ -106,7 +104,7 @@ function survey_page_handler($page) {
 	elgg_load_library('elgg:survey');
 	elgg_push_breadcrumb(elgg_echo('item:object:survey'), "survey/all");
 	$page_type = $page[0];
-	if (empty($page_type)) $page_type = 'all';
+	if (empty($page_type)) { $page_type = 'all'; }
 	switch($page_type) {
 		case "view":
 			echo survey_get_page_view($page[1]);
@@ -117,19 +115,19 @@ function survey_page_handler($page) {
 		case "add":
 		case "edit":
 			$container = null;
-			if (isset($page[1])){ $container = $page[1]; }
+			if (isset($page[1])) { $container = $page[1]; }
 			echo survey_get_page_edit($page_type, $container);
 			break;
 		case "results":
 			$guid = $filter = $filter_guid = false;
-			if (isset($page[1])){ $guid = $page[1]; }
-			if (isset($page[2])){ $filter = $page[2]; }
-			if (isset($page[3])){ $filter_guid = $page[3]; }
+			if (isset($page[1])) { $guid = $page[1]; }
+			if (isset($page[2])) { $filter = $page[2]; }
+			if (isset($page[3])) { $filter_guid = $page[3]; }
 			echo survey_get_page_results($guid, $filter, $filter_guid);
 			break;
 		case "export":
 			$guid = false;
-			if (isset($page[1])){ $guid = $page[1]; }
+			if (isset($page[1])) { $guid = $page[1]; }
 			echo survey_get_page_export($guid);
 			break;
 		case "friends":
@@ -170,29 +168,22 @@ function survey_page_handler($page) {
 /**
  * Return the url for survey objects
  */
-function survey_url($survey) {
-	$title = elgg_get_friendly_title($survey->title);
-	return  "survey/view/" . $survey->guid . "/" . $title;
-}
-/* Elgg 1.10
 function survey_url($hook, $type, $url, $params) {
-	$survey = $params['entity'];
-	if ($survey instanceof Survey) {
-		if (!$survey->getOwnerEntity()) {
-			// default to a standard view if no owner.
-			return false;
-		}
-		$title = elgg_get_friendly_title($survey->title);
-		return "survey/view/" . $survey->guid . "/" . $title;
+	$entity = $params['entity'];
+	if (elgg_instanceof($entity, 'object', 'survey')) {
+		// default to a standard view if no owner.
+		if (!$entity->getOwnerEntity()) { return false; }
+		$title = elgg_get_friendly_title($entity->title);
+		return "survey/view/" . $entity->guid . "/" . $title;
 	}
 }
-*/
+
 
 /**
  * Add a menu item to an owner block
  */
 function survey_owner_block_menu($hook, $type, $return, $params) {
-	if ($params['entity'] instanceof ElggUser) {
+	if (elgg_instanceof($params['entity'], 'user')) {
 		$url = "survey/owner/{$params['entity']->username}";
 		$item = new ElggMenuItem('survey', elgg_echo('survey'), $url);
 		$return[] = $item;
@@ -207,6 +198,7 @@ function survey_owner_block_menu($hook, $type, $return, $params) {
 	return $return;
 }
 
+
 /**
  * Prepare a notification message about a created survey
  *
@@ -216,7 +208,6 @@ function survey_owner_block_menu($hook, $type, $return, $params) {
  * @param array                           $params       Hook parameters
  * @return Elgg_Notifications_Notification
  */
-/* Elgg 1.10
 function survey_prepare_notification($hook, $type, $notification, $params) {
 	$entity = $params['event']->getObject();
 	$owner = $params['event']->getActor();
@@ -234,30 +225,17 @@ function survey_prepare_notification($hook, $type, $notification, $params) {
 
 	return $notification;
 }
-*/
-function survey_prepare_notification($hook, $type, $notification, $params) {
-	$entity = $params['entity'];
-	$to_entity = $params['to_entity'];
-	$method = $params['method'];
-	if (elgg_instanceof($entity, 'object', 'survey')) {
-		$user = elgg_get_logged_in_user_entity();
-		if (!$user) {
-			$user = $entity->getOwnerEntity();
-		}
-		return elgg_echo('survey:notify:body', array($user->name, $entity->title, $entity->getURL()));
-	}
-	return null;
-}
 
-function survey_widget_urls($hook_name, $entity_type, $return_value, $params){
+
+function survey_widget_urls($hook_name, $entity_type, $return_value, $params) {
 	$result = $return_value;
 	$widget = $params["entity"];
 
-	if(empty($result) && ($widget instanceof ElggWidget)) {
+	if (empty($result) && ($widget instanceof ElggWidget)) {
 		$owner = $widget->getOwnerEntity();
 		switch($widget->handler) {
 			case "survey":
-				if($owner instanceof ElggUser){
+				if (elgg_instanceof($owner, 'user')) {
 					$result = "/survey/owner/{$owner->username}/all";
 				} else {
 					$result = "/survey/all";
@@ -270,7 +248,7 @@ function survey_widget_urls($hook_name, $entity_type, $return_value, $params){
 				$result = "/survey/all";
 				break;
 			case "latestgroupsurvey":
-				if($owner instanceof ElggGroup){
+				if (elgg_instanceof($owner, 'group')) {
 					$result = "/survey/group/{$owner->guid}/all";
 				} else {
 					$result = "/survey/owner/{$owner->username}/all";
