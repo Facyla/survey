@@ -43,8 +43,22 @@ With this new release I've tried to merge the two classes of the poll(s) plugin 
 
 ### Changelog
 
-1.10.2:
+1.12.0 : 20160412 - updated to Elgg 1.12
 
+1.8.20.1 : 20150312 - rewritten survey plugin
+ - multiple questions per survey
+ - question types : text, longtext, pulldown, checkboxes, multiselect, rating, date
+ - improved results on survey page
+ - detailed results page + per question + per user
+ - charts (using elgg_dataviz plugin)
+ - add comments setting + disable comments by default
+
+1.8.20 : 20150219 - Facyla fork based on poll 1.10.2 from iionly
+ - back to Elgg 1.8
+ - FR translation
+ - start implementing multiple questions and answers types
+
+1.10.2:
 - Based on version 1.9.2,
 - Fix of deprecation issues occuring on Elgg 1.10 (namely changing output/confirmlink view to output/url view).
 
